@@ -1,0 +1,21 @@
+[theme]
+base = "light"
+primaryColor = "#C2527D"
+backgroundColor = "#FFF7FA"
+secondaryBackgroundColor = "#FFF0F5"
+textColor = "#4A2B3A"
+borderColor = "#F7D9E4"
+baseRadius = "12px"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+# O app guarda a chave da API, então só aceita acesso deste computador.
+address = "localhost"
+port = 8501
+headless = true

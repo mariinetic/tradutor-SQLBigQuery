@@ -1,0 +1,131 @@
+/* As cores base ficam em .streamlit/config.toml. */
+:root {
+  --rosa-claro: #fff0f5;
+  --rosa-pastel: #f8c8d8;
+  --rosa-pastel-forte: #f4b4ca;
+  --rosa-borda: #f7d9e4;
+  --vinho: #4a2b3a;
+  --vinho-suave: #7d5a6a;
+  --sombra: 0 10px 30px rgba(194, 82, 125, 0.1);
+}
+
+.stApp {
+  background: linear-gradient(160deg, #fff7fa 0%, #ffeef4 100%);
+}
+
+.block-container {
+  max-width: 760px;
+  padding-top: 3.5rem;
+}
+
+/* Marca */
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.marca-icone {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  color: var(--vinho);
+  background: var(--rosa-pastel);
+  box-shadow: var(--sombra);
+}
+
+.marca h1 {
+  margin: 0;
+  padding: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--vinho);
+}
+
+.marca p {
+  margin: 2px 0 0;
+  color: var(--vinho-suave);
+}
+
+/* Cartões */
+.st-key-cartao_pergunta,
+.st-key-cartao_resultado,
+.st-key-cartao_chave {
+  padding: 24px;
+  border: 1px solid var(--rosa-borda);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: var(--sombra);
+}
+
+.st-key-cartao_resultado h3,
+.st-key-cartao_chave h3 {
+  padding-top: 0;
+  font-size: 1.15rem;
+  color: var(--vinho);
+}
+
+/* Botão principal: fundo pastel com texto escuro para manter a leitura */
+.stFormSubmitButton button {
+  border: none;
+  border-radius: 12px;
+  padding: 0.5rem 1.25rem;
+  font-weight: 600;
+  color: var(--vinho);
+  background: var(--rosa-pastel);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.stFormSubmitButton button:hover {
+  color: var(--vinho);
+  background: var(--rosa-pastel-forte);
+  transform: translateY(-1px);
+}
+
+.stFormSubmitButton button:focus:not(:active) {
+  color: var(--vinho);
+}
+
+/* Exemplos em formato de etiqueta */
+.st-key-exemplos button {
+  min-height: 0;
+  border: 1px solid var(--rosa-borda);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  color: var(--vinho);
+  background: var(--rosa-claro);
+}
+
+.st-key-exemplos button p {
+  font-size: 0.85rem;
+}
+
+.st-key-exemplos button:hover {
+  border-color: var(--rosa-pastel-forte);
+  color: var(--vinho);
+  background: var(--rosa-pastel);
+}
+
+/* Campos */
+[data-testid="stExpander"] details {
+  border-color: var(--rosa-borda);
+  border-radius: 12px;
+}
+
+/* O botão de copiar fica sempre visível, sem depender de passar o mouse */
+[data-testid="stCode"] div:has([aria-label="Copy to clipboard"]) {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Rodapé */
+.st-key-rodape button p {
+  font-size: 0.8rem;
+  color: var(--vinho-suave);
+}

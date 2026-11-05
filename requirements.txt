@@ -1,0 +1,6 @@
+anthropic==2.5.0
+pydantic==2.14.3
+python-dotenv==1.2.4
+sqlglot==30.29.0
+streamlit==1.66.1
+pytest==9.2.0
