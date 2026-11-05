@@ -5,6 +5,7 @@ from pathlib import Path
 import anthropic
 import streamlit as st
 
+import banco
 import configuracao
 from tradutor import checar_sql, tem_credencial, traduzir, validar_chave
 
@@ -95,6 +96,95 @@ def usar_exemplo(exemplo: str) -> None:
     st.session_state.pendente = exemplo
 
 
+def atualizar_tabelas() -> None:
+    """Precisa rodar antes de o campo de tabelas ser desenhado na tela."""
+    with st.spinner("Lendo suas tabelas..."):
+        tabelas, cortada = banco.ler_tabelas()
+    st.session_state.tabelas = tabelas
+    configuracao.salvar_tabelas(tabelas)
+    if cortada:
+        st.session_state.aviso_tabelas = (
+            f"O projeto tem muitas tabelas, então li só as {banco.LIMITE_TABELAS} primeiras. "
+            "Apague ou cole tabelas em Minhas tabelas, se precisar."
+        )
+
+
+def secao_bigquery() -> None:
+    conectado = banco.conectado()
+    rotulo = "BigQuery conectado" if conectado else "Conectar ao BigQuery (opcional)"
+    with st.expander(rotulo, icon=":material/cloud_done:" if conectado else ":material/cloud:"):
+        try:
+            if conectado:
+                st.caption("O SQL é conferido no BigQuery, e suas tabelas são lidas sozinhas.")
+                with st.container(horizontal=True):
+                    atualizar = st.button("Atualizar tabelas", icon=":material/sync:")
+                    sair = st.button("Desconectar", icon=":material/link_off:")
+                if atualizar:
+                    atualizar_tabelas()
+                if sair:
+                    banco.desconectar()
+                    st.session_state.pop("validacao", None)
+                    st.rerun()
+            else:
+                st.caption(
+                    "Envie a chave JSON de uma conta de serviço do Google Cloud, com os "
+                    "papéis BigQuery Data Viewer e BigQuery Job User. Ela fica salva neste "
+                    "computador."
+                )
+                arquivo = st.file_uploader("Chave JSON", type="json")
+                if st.button("Conectar", icon=":material/link:", disabled=arquivo is None):
+                    banco.conectar(arquivo.getvalue())
+                    atualizar_tabelas()
+                    st.rerun()
+        except banco.ErroBigQuery as erro:
+            st.error(str(erro), icon=":material/error:")
+        aviso = st.session_state.pop("aviso_tabelas", None)
+        if aviso:
+            st.warning(aviso, icon=":material/warning:")
+
+
+def validar_no_bigquery(sql: str | None) -> dict | None:
+    """Confere o SQL no BigQuery, quando conectado e se for só leitura."""
+    if not sql or not banco.conectado() or checar_sql(sql):
+        return None
+    try:
+        with st.spinner("Conferindo no BigQuery..."):
+            return {"bytes": banco.validar(sql)}
+    except banco.ErroBigQuery as erro:
+        return {"erro": str(erro)}
+
+
+def mostrar_validacao(sql: str, validacao: dict) -> None:
+    if "erro" in validacao:
+        st.error(f"O BigQuery não aceitou esse SQL: {validacao['erro']}", icon=":material/error:")
+        return
+
+    leitura = banco.formatar_bytes(validacao["bytes"])
+    if validacao["bytes"] > banco.LIMITE_BYTES:
+        limite = banco.formatar_bytes(banco.LIMITE_BYTES)
+        st.warning(
+            f"SQL válido, mas leria {leitura}, acima do limite de {limite} para executar por aqui.",
+            icon=":material/warning:",
+        )
+        return
+
+    st.success(f"Conferido no BigQuery. Vai ler cerca de {leitura}.", icon=":material/check_circle:")
+    if st.button("Executar consulta", key="executar", icon=":material/play_arrow:"):
+        try:
+            with st.spinner("Executando..."):
+                st.session_state.dados = banco.executar(sql)
+        except banco.ErroBigQuery as erro:
+            st.error(str(erro), icon=":material/error:")
+
+    if "dados" in st.session_state:
+        linhas, total = st.session_state.dados
+        if linhas:
+            st.dataframe(linhas, hide_index=True)
+            st.caption(f"Mostrando {len(linhas)} de {total} linhas.")
+        else:
+            st.info("A consulta não retornou nenhuma linha.", icon=":material/info:")
+
+
 def mostrar_resultado(pergunta: str, resultado) -> None:
     with st.container(key="cartao_resultado"):
         if resultado.sql:
@@ -104,6 +194,9 @@ def mostrar_resultado(pergunta: str, resultado) -> None:
             problema = checar_sql(resultado.sql)
             if problema:
                 st.warning(problema, icon=":material/warning:")
+            validacao = st.session_state.get("validacao")
+            if validacao and not problema:
+                mostrar_validacao(resultado.sql, validacao)
         else:
             st.subheader(":material/info: Não deu para gerar o SQL", anchor=False)
             st.caption(pergunta)
@@ -142,10 +235,13 @@ with st.container(key="cartao_pergunta"):
         for exemplo, icone in EXEMPLOS:
             st.button(exemplo, icon=icone, on_click=usar_exemplo, args=(exemplo,))
 
+    secao_bigquery()
+
     with st.expander("Minhas tabelas (opcional)", icon=":material/table_chart:"):
         st.caption(
-            "Cole suas tabelas e colunas em qualquer formato para o SQL sair com os "
-            "nomes certos. Elas ficam salvas para as próximas vezes."
+            "Com o BigQuery conectado, esta lista é preenchida sozinha. Sem ele, cole "
+            "suas tabelas e colunas em qualquer formato. Tudo fica salvo para as "
+            "próximas vezes."
         )
         st.text_area(
             "Tabelas e colunas",
@@ -159,8 +255,10 @@ with st.container(key="cartao_pergunta"):
 pendente = st.session_state.pop("pendente", "").strip()
 if pendente:
     resultado = executar_traducao(pendente, st.session_state.tabelas)
+    st.session_state.pop("dados", None)
     if resultado:
         st.session_state.resultado = (pendente, resultado)
+        st.session_state.validacao = validar_no_bigquery(resultado.sql)
     else:
         st.session_state.pop("resultado", None)
 

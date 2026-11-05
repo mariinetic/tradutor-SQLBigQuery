@@ -1,3 +1,5 @@
+from datetime import date
+from decimal import Decimal
 from unittest.mock import patch
 
 import anthropic
@@ -5,6 +7,7 @@ import httpx2
 import pytest
 from streamlit.testing.v1 import AppTest
 
+import banco
 import configuracao
 import tradutor
 from tradutor import Traducao
@@ -15,6 +18,7 @@ def ambiente(monkeypatch, tmp_path):
     """Isola cada teste dos arquivos reais de chave e de tabelas."""
     monkeypatch.setattr(configuracao, "ARQUIVO_CHAVE", tmp_path / ".env")
     monkeypatch.setattr(configuracao, "ARQUIVO_TABELAS", tmp_path / "tabelas.txt")
+    monkeypatch.setattr(configuracao, "ARQUIVO_CREDENCIAL", tmp_path / "credencial.json")
     monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-de-teste")
 
@@ -154,6 +158,107 @@ def test_chave_invalida_volta_para_a_tela_da_chave():
 def test_botao_de_trocar_chave():
     tela = botao(abrir(), "Trocar chave da API").click().run()
     assert any(b.label == "Salvar e começar" for b in tela.button)
+
+
+@pytest.fixture
+def bigquery_conectado():
+    """App conectado, com um SQL traduzido pronto para os testes."""
+    traducao = Traducao(sql="SELECT 1", premissas=[])
+    with (
+        patch.object(banco, "conectado", return_value=True),
+        patch.object(tradutor, "traduzir", return_value=traducao),
+    ):
+        yield
+
+
+def test_sem_conexao_nao_valida_nem_oferece_executar():
+    traducao = Traducao(sql="SELECT 1", premissas=[])
+    with (
+        patch.object(tradutor, "traduzir", return_value=traducao),
+        patch.object(banco, "validar") as validar,
+    ):
+        tela = traduzir_pergunta()
+    validar.assert_not_called()
+    assert not any(b.label == "Executar consulta" for b in tela.button)
+
+
+def test_sql_valido_mostra_leitura_e_so_executa_ao_clicar(bigquery_conectado):
+    linhas = [{"valor": Decimal("10.50"), "dia": date(2026, 11, 5)}]
+    with (
+        patch.object(banco, "validar", return_value=2048),
+        patch.object(banco, "executar", return_value=(linhas, 1)) as executar,
+    ):
+        tela = traduzir_pergunta()
+        assert "2,0 KB" in tela.success[0].value
+        executar.assert_not_called()
+
+        botao(tela, "Executar consulta").click().run()
+
+    assert not tela.exception
+    executar.assert_called_once_with("SELECT 1")
+    assert len(tela.dataframe) == 1
+    assert any("1 de 1" in c.value for c in tela.caption)
+
+
+def test_sql_recusado_mostra_erro_e_nao_oferece_executar(bigquery_conectado):
+    erro = banco.ErroBigQuery("Unrecognized name: lucro")
+    with patch.object(banco, "validar", side_effect=erro):
+        tela = traduzir_pergunta()
+    assert "lucro" in tela.error[0].value
+    assert not any(b.label == "Executar consulta" for b in tela.button)
+
+
+def test_consulta_acima_do_limite_nao_pode_ser_executada(bigquery_conectado):
+    with patch.object(banco, "validar", return_value=banco.LIMITE_BYTES + 1):
+        tela = traduzir_pergunta()
+    assert "acima do limite" in tela.warning[0].value
+    assert not any(b.label == "Executar consulta" for b in tela.button)
+
+
+def test_sql_que_altera_dados_nem_vai_ao_bigquery():
+    traducao = Traducao(sql="DELETE FROM `p.d.t` WHERE TRUE", premissas=[])
+    with (
+        patch.object(banco, "conectado", return_value=True),
+        patch.object(tradutor, "traduzir", return_value=traducao),
+        patch.object(banco, "validar") as validar,
+    ):
+        tela = traduzir_pergunta()
+    validar.assert_not_called()
+    assert not any(b.label == "Executar consulta" for b in tela.button)
+
+
+def test_nova_traducao_limpa_os_dados_anteriores(bigquery_conectado):
+    with (
+        patch.object(banco, "validar", return_value=10),
+        patch.object(banco, "executar", return_value=([{"a": 1}], 1)),
+    ):
+        tela = traduzir_pergunta()
+        botao(tela, "Executar consulta").click().run()
+        assert len(tela.dataframe) == 1
+        botao(tela, "Traduzir").click().run()
+    assert len(tela.dataframe) == 0
+
+
+def test_atualizar_tabelas_preenche_o_campo_e_salva():
+    with (
+        patch.object(banco, "conectado", return_value=True),
+        patch.object(banco, "ler_tabelas", return_value=("p.d.t (a STRING)", False)),
+    ):
+        tela = botao(abrir(), "Atualizar tabelas").click().run()
+    assert not tela.exception
+    assert tela.text_area(key="tabelas").value == "p.d.t (a STRING)"
+    assert configuracao.carregar_tabelas() == "p.d.t (a STRING)"
+
+
+def test_erro_ao_ler_tabelas_aparece_sem_quebrar():
+    erro = banco.ErroBigQuery("Não consegui ler as tabelas: sem permissão")
+    with (
+        patch.object(banco, "conectado", return_value=True),
+        patch.object(banco, "ler_tabelas", side_effect=erro),
+    ):
+        tela = botao(abrir(), "Atualizar tabelas").click().run()
+    assert not tela.exception
+    assert "sem permissão" in tela.error[0].value
 
 
 def test_interface_nao_tem_emojis():

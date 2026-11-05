@@ -72,6 +72,7 @@
 }
 
 /* Botão principal: fundo pastel com texto escuro para manter a leitura */
+.st-key-executar button,
 .stFormSubmitButton button {
   border: none;
   border-radius: 12px;
@@ -82,6 +83,7 @@
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
+.st-key-executar button:hover,
 .stFormSubmitButton button:hover {
   color: var(--vinho);
   background: var(--rosa-pastel-forte);

@@ -14,7 +14,7 @@ if not exist ".venv\Scripts\python.exe" (
   python -m venv .venv
 )
 
-".venv\Scripts\python.exe" -c "import streamlit, anthropic, sqlglot, dotenv" >nul 2>nul
+".venv\Scripts\python.exe" -c "import streamlit, anthropic, sqlglot, dotenv, google.cloud.bigquery" >nul 2>nul
 if errorlevel 1 (
   echo Instalando o que falta. Isso pode levar alguns minutos...
   ".venv\Scripts\python.exe" -m pip install --quiet -r requirements.txt

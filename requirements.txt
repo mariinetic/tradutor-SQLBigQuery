@@ -1,4 +1,5 @@
 anthropic==2.5.0
+google-cloud-bigquery==3.47.0
 pydantic==2.14.3
 python-dotenv==1.2.4
 sqlglot==30.29.0

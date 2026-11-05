@@ -8,6 +8,7 @@ from dotenv import load_dotenv, set_key
 PASTA = Path(__file__).parent
 ARQUIVO_CHAVE = PASTA / ".env"
 ARQUIVO_TABELAS = PASTA / "tabelas.txt"
+ARQUIVO_CREDENCIAL = PASTA / "credencial_bigquery.json"
 
 
 def carregar_chave() -> None:
@@ -27,3 +28,11 @@ def carregar_tabelas() -> str:
 
 def salvar_tabelas(tabelas: str) -> None:
     ARQUIVO_TABELAS.write_text(tabelas, encoding="utf-8")
+
+
+def salvar_credencial(conteudo: bytes) -> None:
+    ARQUIVO_CREDENCIAL.write_bytes(conteudo)
+
+
+def apagar_credencial() -> None:
+    ARQUIVO_CREDENCIAL.unlink(missing_ok=True)

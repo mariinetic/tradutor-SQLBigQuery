@@ -4,3 +4,4 @@ __pycache__/
 .env
 avaliacao.txt
 tabelas.txt
+credencial_bigquery.json

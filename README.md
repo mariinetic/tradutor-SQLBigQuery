@@ -1,6 +1,6 @@
 # Tradutor SQL BigQuery
 
-Escreva uma pergunta em português e receba o SQL do BigQuery. O app só gera o SQL: não se conecta ao BigQuery e não executa nada.
+Escreva uma pergunta em português e receba o SQL do BigQuery. Se quiser, conecte o app ao BigQuery para ele ler suas tabelas, conferir o SQL e executar a consulta.
 
 ## Como abrir
 
@@ -16,11 +16,26 @@ Para o SQL sair com os nomes certos, cole suas tabelas e colunas em **Minhas tab
 
 O app mostra também o que foi considerado, como "do mês" significar o mês atual.
 
+## Como conectar ao BigQuery
+
+A conexão é opcional. Para fazer:
+
+1. No [Google Cloud](https://console.cloud.google.com), crie ou escolha um projeto.
+2. Em **IAM e administrador > Contas de serviço**, crie uma conta de serviço com os papéis **BigQuery Data Viewer** e **BigQuery Job User**.
+3. Na conta criada, abra **Chaves > Adicionar chave > Criar nova chave > JSON** e baixe o arquivo.
+4. No app, abra **Conectar ao BigQuery**, envie o arquivo e clique em **Conectar**. Ele fica salvo em `credencial_bigquery.json`, neste computador.
+
+Depois de conectado:
+
+- As tabelas são lidas sozinhas, até 200 por vez. Use **Atualizar tabelas** quando elas mudarem. Isso substitui a lista salva em **Minhas tabelas**.
+- Cada SQL é conferido com um dry run, que não tem custo de consulta e mostra quanto ele leria.
+- A consulta só roda quando você clica em **Executar consulta**, e o BigQuery pode cobrar por ela. O app só executa consultas de leitura, recusa as que leriam mais de 10 GB e mostra até 1.000 linhas.
+
 ## Limites
 
-A checagem é local: confere a sintaxe e se o SQL é só leitura, mas não sabe se as tabelas e colunas existem. Revise o SQL antes de usar.
+Sem a conexão, a checagem é local: confere a sintaxe e se o SQL é só leitura, mas não sabe se as tabelas e colunas existem. Revise o SQL antes de usar.
 
-O app aceita acesso apenas deste computador, porque guarda a sua chave. Não o publique na internet como está: quem o abrisse usaria a sua chave.
+O app aceita acesso apenas deste computador, porque guarda as suas chaves. Não o publique na internet como está: quem o abrisse usaria as suas chaves.
 
 ## Testes
 
